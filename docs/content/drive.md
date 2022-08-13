@@ -193,10 +193,32 @@ the google drive web interface yet.
 
 ### Service Account support ###
 
-You can set up rclone with Google Drive in an unattended mode,
-i.e. not tied to a specific end-user Google account. This is useful
-when you want to synchronise files onto machines that don't have
-actively logged-in users, for example build machines.
+Best practice access management suggests the use of Service Accounts 
+as an alternative to 'just give me your personal credentials'. 
+You can limit what they can reach, and use different ones for 
+different situations, making it easier to securely control 
+your data than if you simply use your regular login. 
+
+#### Use cases ####
+
+With an Organisation using Google Workspaces (formerly Apps or GSuite) 
+the Service Account can be granted Domain wide Delegation, 
+not limiting it to a specified user account
+
+In the configuration steps below we will show how 
+the Google Admin for the organisation with the domain **example.com** can store data on an individual member's Drive account with the username **foo@example.com**.
+
+For an individual with a regular Gmail account, 
+the Service Account can be granted access using the normal 
+Drive Sharing features. 
+If you want to allow access to your whole Drive in a Gmail account, you might be better off using the [Making your own client_id](#making-your-own-client-id) method at the end of this page. 
+
+These techniques are especially useful if you want to 
+set up rclone with Google Drive in an unattended mode
+for instance to synchronise files onto machines that don't have
+actively logged-in users, such as build machines.
+
+#### Accessing with rclone ####
 
 To use a Service Account instead of OAuth2 token flow, enter the path
 to your Service Account credentials at the `service_account_file`
@@ -206,37 +228,48 @@ credentials file into the rclone config file, you can set
 `service_account_credentials` with the actual contents of the file
 instead, or set the equivalent environment variable.
 
-#### Use case - Google Apps/G-suite account and individual Drive ####
+#### Further reading #### 
 
-Let's say that you are the administrator of a Google Apps (old) or
-G-suite account.
-The goal is to store data on an individual's Drive account, who IS
-a member of the domain.
-We'll call the domain **example.com**, and the user
-**foo@example.com**.
+If you want to know more about Service Accounts in 
+Google Cloud, see https://cloud.google.com/iam/docs/understanding-service-accounts
 
-There's a few steps we need to go through to accomplish this:
+#### Configuration Steps ####
 
-##### 1. Create a service account for example.com #####
-  - To create a service account and obtain its credentials, go to the
-[Google Developer Console](https://console.developers.google.com).
-  - You must have a project - create one if you don't.
+##### 1. Create a Service account #####
+
+This could be either for an organisation like example.com or for an individual account like Gmail. To create the service account and obtain its credentials: 
+
+  - go to the
+[Google Cloud Console](https://console.cloud.google.com/).
+  - You must have a project
+     - create one if you don't
+     - go to Project Settings if you do
   - Then go to "IAM & admin" -> "Service Accounts".
-  - Use the "Create Credentials" button. Fill in "Service account name"
-with something that identifies your client. "Role" can be empty.
-  - Tick "Furnish a new private key" - select "Key type JSON".
-  - Tick "Enable G Suite Domain-wide Delegation". This option makes
-"impersonation" possible, as documented here:
+  - Use the "Create Service Account" button. Fill in "Service account name" with something that identifies your client.
+  - Click "Create" then go on to add a Role
+  - "Role" choise either:
+     - for an organization with Google Workspace (GSuite), Role can be empty
+     - for an Individual Gmail account...
+		- "Select Role", then "Basic" or "Project" and "Owner" 
+  - Tick "Furnish a new private key" and select "Key type JSON"
+     - or chosse "Actions" -> "Manage Keys" -> "Add Key" -> Create new - "JSON"
+  - Tick "Enable G Suite Domain-wide Delegation". 
+     - you may need to look under the Details tab
+     - you might have to enter an OAuth Product Name
+     - This option makes "impersonation" possible, as documented here:
 [Delegating domain-wide authority to the service account](https://developers.google.com/identity/protocols/OAuth2ServiceAccount#delegatingauthority)
   - These credentials are what rclone will use for authentication.
 If you ever need to remove access, press the "Delete service
 account key" button.
 
-##### 2. Allowing API access to example.com Google Drive #####
-  - Go to example.com's admin console
+
+##### 2a. Allowing API access to example.com Google Drive #####
+  - Go to example.com's [admin console](https://admin.google.com/)
   - Go into "Security" (or use the search bar)
   - Select "Show more" and then "Advanced settings"
   - Select "Manage API client access" in the "Authentication" section
+     - or scroll down to find "API controls"
+     - under "Domain wide delegation" choose "Add new" "Client ID"
   - In the "Client Name" field enter the service account's
 "Client ID" - this can be found in the Developer Console under
 "IAM & Admin" -> "Service Accounts", then "View Client ID" for
@@ -245,6 +278,20 @@ It is a ~21 character numerical string.
   - In the next field, "One or More API Scopes", enter
 `https://www.googleapis.com/auth/drive`
 to grant access to Google Drive specifically.
+
+
+
+##### 2b. Allowing API access to your individual Google Drive #####
+  - open the [Google Cloud Platform Console](https://console.cloud.google.com/), and under the Project go to "IAM & admin" -> "Service Accounts".
+  - Under the Service Account details, Copy the Email
+     - this will look like a very long address
+
+
+
+
+
+Note: there _might_ be a way to Authorise your Service Account to access your whole Gmail account Drive, by using the Google Cloud Platform under the API Library to give permissions to the Google Drive API. There might also be a way to use the Google Developers OAuth Playground to authenticate your Service Account and allow for the Google APIs Drive scope. However we do not yet have a definitive set of procedures to make this work. In the meantime, if you want to allow access to your whole Drive in a Gmail account, use instead the [Making your own client_id](#making-your-own-client-id) method at the end of this page. 
+
 
 ##### 3. Configure rclone, assuming a new install #####
 
